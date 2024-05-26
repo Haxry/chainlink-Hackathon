@@ -20,12 +20,15 @@ import {LinkTokenInterface} from "@chainlink/contracts@1.1.1/src/v0.8/shared/int
 
 contract APIConsumer is ChainlinkClient, ConfirmedOwner {
     using Chainlink for Chainlink.Request;
-
+     
     uint256 public volume;
     bytes32 private jobId;
     uint256 private fee;
 
     event RequestVolume(bytes32 indexed requestId, uint256 volume);
+
+bool private reentrancy = false ;
+
 
     /**
      * @notice Initialize the link token and target oracle
@@ -47,17 +50,25 @@ contract APIConsumer is ChainlinkClient, ConfirmedOwner {
      * Create a Chainlink request to retrieve API response, find the target
      * data, then multiply by 1000000000000000000 (to remove decimal places from data).
      */
-    function requestVolumeData() public returns (bytes32 requestId) {
+        function requestVolumeData(string memory s1 , string memory s2) public returns (bytes32 requestId) {
+        if(reentrancy == true ){
+            revert("Another txn is in progress , Please Wait");
+        }
+
+        reentrancy = true ;
+
         Chainlink.Request memory req = _buildChainlinkRequest(
             jobId,
             address(this),
             this.fulfill.selector
         );
 
+        string memory main = string(abi.encodePacked("https://min-api.cryptocompare.com/data/pricemultifull?fsyms=" , string(abi.encodePacked(s1 , string(abi.encodePacked("&tsyms=" , s2))))));
+
         // Set the URL to perform the GET request on
         req._add(
             "get",
-            "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD"
+            main
         );
 
         // Set the path to find the desired data in the API response, where the response format is:
@@ -76,9 +87,13 @@ contract APIConsumer is ChainlinkClient, ConfirmedOwner {
         // Multiply the result by 1000000000000000000 to remove decimals
         int256 timesAmount = 10 ** 18;
         req._addInt("times", timesAmount);
+        bytes32 id = _sendChainlinkRequest(req, fee);
+        reentrancy = false ;
 
         // Sends the request
-        return _sendChainlinkRequest(req, fee);
+        return id ;
+
+       
     }
 
     /**
