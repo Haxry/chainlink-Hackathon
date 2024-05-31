@@ -1,0 +1,180 @@
+const { ethers } = require("ethers")
+
+
+
+const contractAddress = "0xf06c4325dcDF66A758bE3692e3A4c5832dD13aaB"
+const contractAddressFuji = "0x389B59Cf676A53f1742E5cd5051bF6776F39CAc2"
+const contractABI = [
+    "event PriceUpdated(uint256 newPrice)",
+    " event AddressApproved(address indexed approvedAddress)",
+    " event Deposit(address indexed sender, uint256 amount)",
+    "event PriceRequested(string indexed req,address indexed user)",
+    "function sendCrossChain(uint64 destinationChainSelector, address receiver) external",
+    "function getLatestPrice() external view returns(uint256)",
+    "function getPrice() external view returns(uint256)",
+    "function updatePriceandZkProof(uint256 _price, bytes32 _proof,address calledBy) external onlyOwnerOrApproved",
+    "function reqtLatestPrice() external  returns(uint256)",
+
+
+];
+
+const receiverABI = [
+    "event MessageReceived( bytes32 indexed messageId, uint64 indexed sourceChainSelector, address sender, string text)",
+    "  event priceRequested(string req,address user)",
+    "function requestLatestPrice() external",
+    "function getLastPriceAndZkProof() external view returns (bytes32 messageId, string memory text)"
+
+
+]
+
+const privateKey = '2cb2f84172cd4b08f72db79626ffb0ee1672b8b4804569fbd5b7909262741c2f'
+let RequestId = 0;
+// Create an empty mapping using a Map
+
+
+
+const addressEventMap = new Map();
+
+// Function to add an event to the mapping
+function addEvent(address, event) {
+    if (!addressEventMap.has(address)) {
+        addressEventMap.set(address, []);
+    }
+    addressEventMap.get(address).push(event);
+}
+
+// Function to retrieve events by address
+function getEvents(address) {
+    return addressEventMap.get(address) || [];
+}
+
+
+
+
+async function ShowData() {
+    const provider = new ethers.providers.WebSocketProvider(`wss://eth-sepolia.g.alchemy.com/v2/zxvCD0dxBcxlvh2mQB1Ac0hJ1oJewl6w`);
+    const wallet = new ethers.Wallet(privateKey, provider);
+    const contract = new ethers.Contract(contractAddress, contractABI, wallet);
+    const userAddress = await wallet.getAddress();
+    const tx = await contract.updatePriceandZkProof(100, "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b", userAddress);
+    console.log("userAddress", userAddress)
+    const receipt = await tx.wait();
+    const chainIdFuji = "14767482510784806043";
+    const tx2 = await contract.sendCrossChain(chainIdFuji, userAddress);
+    await tx2.wait();
+
+}
+
+async function DataProceed() {
+
+    const FujiProvider = new ethers.providers.WebSocketProvider(`wss://avalanche-fuji-c-chain-rpc.publicnode.com`);
+    const wallet = new ethers.Wallet(privateKey, FujiProvider);
+    const contract = new ethers.Contract(contractAddressFuji, receiverABI, wallet);
+    const chainId = await FujiProvider.getNetwork().chainId;
+
+    if (chainId == 43113) {
+
+        const tx = await contract.requestLatestPrice();
+        await tx.wait();
+    }
+    ShowData();
+}
+
+async function ShowPrice() {
+    const FujiProvider = new ethers.providers.WebSocketProvider(`wss://avalanche-fuji-c-chain-rpc.publicnode.com`);
+    const wallet = new ethers.Wallet(privateKey, FujiProvider);
+    const contract = new ethers.Contract(contractAddressFuji, receiverABI, wallet);
+    const chainId = await FujiProvider.getNetwork().chainId;
+
+    if (chainId == 43113) {
+        const tx = await contract.getLastPriceAndZkProof();
+        await tx.wait();
+        console.log("Price:", tx)
+        /*const event = receipt.events.find(event => event.event === 'PriceUpdated');
+         if (event) {
+             RequestId = event.args.id;
+             console.log("Request ID:", RequestId);
+ 
+         } else {
+             console.error("Event not found in receipt");
+         } */
+    }
+}
+
+DataProceed();
+
+/* contract.on('RequestVolume', (requestId, volume, event) => {
+//     if (requestId == RequestId) {
+        const string2 = volume.toString();
+        console.log("Volume:", string2);
+        provider.removeAllListeners();
+    }
+})
+
+addEvent(userAddress, RequestId);
+
+
+}
+
+async function recents() {
+    addEvent("0x47D7aaB25647dfd2C8c7ADe6A74162f07c516182", "0xf7226a12427ed3371e86e00b66c380253c8b5d058aa4afd0e4f98019502a21c2")
+    addEvent("0x47D7aaB25647dfd2C8c7ADe6A74162f07c516182", "0x5308d0f30024d7d380f528db509c3d69f86e56fbedcd820acc41c68da37f4a2c")
+    console.log("sex")
+
+    const userAddress = await wallet.getAddress();
+    const events = getEvents(userAddress);
+    for (const event of events) {
+        const trans = contract.filters.RequestVolume(event);
+        const transactions = await contract.queryFilter(trans);
+        transactions.forEach((transaction) => {
+            const volumereq = transaction.args.volume.toString();
+            console.log(event + ":" + volumereq);
+        });
+    }
+
+
+
+
+
+
+    // console.log("tx", tx)
+
+    // contract.on("ChainlinkRequested", (requestId, event) => {
+    //   if (requestId == tx) {
+    //   console.log("Event detected for specific request ID:", id);
+    // console.log(event);
+    //  }
+    // });
+
+    // contract.on("RequestVolume", (requestId, volume, event) => {
+    //     if (requestId == tx) {
+    //         console.log(volume);
+    //         console.log(event);
+    //     }
+    // });}
+
+    // async function recents() {
+    //     const userAddress = await signer.getAddress();
+    //     const events = getEvents(userAddress);
+    //     for(const event of events) {
+    //        var filter = {
+    //             address: contractAddress,
+    //             topics: [ethers.utils.id("ChainlinkRequested(bytes32)"), event]
+    //         }
+    //         const logs = await provider.getLogs(filter);
+    //         for(const log of logs) {
+    //             console.log("Log:", log);
+    //        }
+    //     }
+    // }
+
+
+    // async function favorites() {
+
+    // }
+
+
+
+    // ShowData();
+    recents();
+    console.log("ended") */
