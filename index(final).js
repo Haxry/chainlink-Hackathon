@@ -534,39 +534,54 @@ const provider = new ethers.providers.JsonRpcProvider('https://sepolia.infura.io
 try {
 
     async function ShowData() {
+        try {
 
-        const wallet = new ethers.Wallet(privateKey, provider);
-        const contract = new ethers.Contract(contractAddress, contractABI, wallet)
-
-        const tx = await contract.updatePriceandZkProof(price, ["0x2ead686faca7ebbab74a2bdbb812c606faa099f2e004ff01b3d2f90d526d958a", "0x2fdd3849f1897514909c566ca64d9eb956f584f4177c7e36d3f818cb3ccd6b50"], [["0x11e09899259a4845d5c025c7f19b2635410c0337288f79d1dd730474dd38cd20", "0x0d116dd0199fe9d750438d64e70d5ecbb2c91a3d9103aae73151f6f29cb9f624"], ["0x05ce4ebd911de5bdee9f7f590f1403a2b1ab13ab95644daa5c223e2b2a2c63e7", "0x1eb58ed60b674ce0c84286d14910b84dd9a60665b78cb824f10e37b14dd9c40a"]], ["0x10328f0478d7e74d2ceb18d14670bc39ba2807d02ddacacc0a1c0ec478aadc70", "0x166a0cbc61ceef4b228b4a7e18c504958a07241cd6e2eb878ea551214ffcf315"], ["0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000"], userAddress);
-        console.log("userAddress", userAddress)
-        await tx.wait();
-        console.log("Price updated")
-        const chainIdFuji = "14767482510784806043";
-        const tx2 = await contract.sendCrossChain(chainIdFuji, userAddress);
-        await tx2.wait();
-        console.log("Price sent to Fuji")
-
+            const wallet = new ethers.Wallet(privateKey, provider);
+            const contract = new ethers.Contract(contractAddress, contractABI, wallet)
+            try {
+                const tx = await contract.updatePriceandZkProof(price, ["0x2ead686faca7ebbab74a2bdbb812c606faa099f2e004ff01b3d2f90d526d958a", "0x2fdd3849f1897514909c566ca64d9eb956f584f4177c7e36d3f818cb3ccd6b50"], [["0x11e09899259a4845d5c025c7f19b2635410c0337288f79d1dd730474dd38cd20", "0x0d116dd0199fe9d750438d64e70d5ecbb2c91a3d9103aae73151f6f29cb9f624"], ["0x05ce4ebd911de5bdee9f7f590f1403a2b1ab13ab95644daa5c223e2b2a2c63e7", "0x1eb58ed60b674ce0c84286d14910b84dd9a60665b78cb824f10e37b14dd9c40a"]], ["0x10328f0478d7e74d2ceb18d14670bc39ba2807d02ddacacc0a1c0ec478aadc70", "0x166a0cbc61ceef4b228b4a7e18c504958a07241cd6e2eb878ea551214ffcf315"], ["0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000"], userAddress);
+                console.log("userAddress", userAddress)
+                await tx.wait();
+                console.log("Price updated")
+            } catch (error) {
+                console.error("Error:", error);
+            }
+            try {
+                const chainIdFuji = "14767482510784806043";
+                const tx2 = await contract.sendCrossChain(chainIdFuji, userAddress);
+                await tx2.wait();
+                console.log("Price sent to Fuji")
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
 
     }
 
     async function DataProceed() {
-
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const FujiProvider = new ethers.providers.Web3Provider(window.ethereum);
-
-
-        chainId = await FujiProvider.getNetwork().chainId;
+        try {
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const FujiProvider = new ethers.providers.Web3Provider(window.ethereum);
 
 
-        const signer = FujiProvider.getSigner();
-        userAddress = signer.getAddress();
-        const contract = new ethers.Contract(contractAddressFuji, receiverABI, signer);
-        const tx = await contract.requestLatestPrice();
-        await tx.wait();
-        ShowData();
+            chainId = await FujiProvider.getNetwork().chainId;
 
 
+            const signer = FujiProvider.getSigner();
+            userAddress = signer.getAddress();
+            const contract = new ethers.Contract(contractAddressFuji, receiverABI, signer);
+            try {
+                const tx = await contract.requestLatestPrice();
+                await tx.wait();
+                ShowData();
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
 
     }
 
