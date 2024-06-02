@@ -1,7 +1,7 @@
 // Purpose: To update the price on Avalanche Fuji C-Chain and send it to Ethereum Mainnet
 
 
-const contractAddress = "0xd064732E93C82faAc50977bAd78ebb7D87c9c13f"
+const contractAddress = "0x5683d5F8A28c86dBfa48464AC51a5C5026bcC8b3"
 const contractAddressFuji = "0x9Ed9f443BD1F4d4116579388B46B4e049104efdd"
 const contractABI = [
     {
