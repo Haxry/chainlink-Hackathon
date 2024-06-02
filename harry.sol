@@ -5,8 +5,6 @@ import {Chainlink, ChainlinkClient} from "@chainlink/contracts@1.1.1/src/v0.8/Ch
 import {ConfirmedOwner} from "@chainlink/contracts@1.1.1/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {LinkTokenInterface} from "@chainlink/contracts@1.1.1/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
 
-
-
 /**
  * Request testnet LINK and ETH here: https://faucets.chain.link/
  * Find information on LINK Token Contracts and get the latest ETH and LINK faucets here: https://docs.chain.link/docs/link-token-contracts/
@@ -20,14 +18,25 @@ import {LinkTokenInterface} from "@chainlink/contracts@1.1.1/src/v0.8/shared/int
 
 contract APIConsumer is ChainlinkClient, ConfirmedOwner {
     using Chainlink for Chainlink.Request;
-
-    uint256 public volume;
+    bool private reentrancy = false;
+    uint256 public volume ;
     bytes32 private jobId;
     uint256 private fee;
 
+ 
     event RequestVolume(bytes32 indexed requestId, uint256 volume);
 
-    /**
+    mapping(address => uint256) public volumeFinal;
+     
+     modifier reentrancyGuard() {
+        if(reentrancy == true){
+            revert("Another txn is in progress , Please Wait");
+        }
+        reentrancy = true ;
+        _;
+        reentrancy = false;
+     }
+         /**
      * @notice Initialize the link token and target oracle
      *
      * Sepolia Testnet details:
@@ -47,17 +56,20 @@ contract APIConsumer is ChainlinkClient, ConfirmedOwner {
      * Create a Chainlink request to retrieve API response, find the target
      * data, then multiply by 1000000000000000000 (to remove decimal places from data).
      */
-    function requestVolumeData() public returns (bytes32 requestId) {
+    function requestVolumeData(string memory s1 , string memory s2) public returns (bytes32 requestId) {
+
         Chainlink.Request memory req = _buildChainlinkRequest(
             jobId,
             address(this),
             this.fulfill.selector
         );
 
+        string memory main = string(abi.encodePacked("https://min-api.cryptocompare.com/data/pricemultifull?fsyms=" , string(abi.encodePacked(s1 , string(abi.encodePacked("&tsyms=" , s2))))));
+        string memory path = string(abi.encodePacked("RAW," , string(abi.encodePacked(s1 , string(abi.encodePacked(",", string(abi.encodePacked(s2 , ",PRICE"))))))));
         // Set the URL to perform the GET request on
         req._add(
             "get",
-            "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD"
+            main
         );
 
         // Set the path to find the desired data in the API response, where the response format is:
@@ -71,14 +83,18 @@ contract APIConsumer is ChainlinkClient, ConfirmedOwner {
         //   }
         //  }
         // request.add("path", "RAW.ETH.USD.VOLUME24HOUR"); // Chainlink nodes prior to 1.0.0 support this format
-        req._add("path", "RAW,ETH,USD,VOLUME24HOUR"); // Chainlink nodes 1.0.0 and later support this format
+        req._add("path", path); // Chainlink nodes 1.0.0 and later support this format
 
         // Multiply the result by 1000000000000000000 to remove decimals
         int256 timesAmount = 10 ** 18;
         req._addInt("times", timesAmount);
+        bytes32 id = _sendChainlinkRequest(req, fee);
+
 
         // Sends the request
-        return _sendChainlinkRequest(req, fee);
+        return id ;
+
+       
     }
 
     /**
@@ -90,6 +106,7 @@ contract APIConsumer is ChainlinkClient, ConfirmedOwner {
     ) public recordChainlinkFulfillment(_requestId) {
         emit RequestVolume(_requestId, _volume);
         volume = _volume;
+        
     }
 
     /**
@@ -103,32 +120,5 @@ contract APIConsumer is ChainlinkClient, ConfirmedOwner {
         );
     }
 
-    function getVolume() external view returns (uint256){
-        return volume;
-    }
-}
-
-
-contract Harry{
-
-    APIConsumer public apiConsumer;
-    uint256 private latestPrice;
-
-    constructor(address _apiConsumer){
-        apiConsumer= APIConsumer(_apiConsumer);
-    }
-
-    function requestLatestPrice() public{
-         apiConsumer.requestVolumeData();
-         latestPrice= apiConsumer.getVolume();
-
-    }
-
-    function getLatestPrice() public view returns(uint256){
-        return latestPrice;
-    }
-
-
-
-
+   
 }
